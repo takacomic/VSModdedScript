@@ -2,6 +2,7 @@
 SETLOCAL ENABLEDELAYEDEXPANSION
 
 SET "STEAM_DIR="
+SET "STEAM_DIR=%STEAM_DIR:/=\%"
 
 SET "PATHSEP=\"
 
@@ -63,4 +64,5 @@ FOR %%F IN (%FOLDERS%) DO (
 )
 
 echo All done. Folders restored.
+
 
