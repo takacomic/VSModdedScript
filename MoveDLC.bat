@@ -1,17 +1,7 @@
 @echo off
 SETLOCAL ENABLEDELAYEDEXPANSION
 
-REM --- Step 1: Get Steam directory from registry ---
-FOR /F "usebackq tokens=2*" %%A IN (`reg query "HKCU\Software\Valve\Steam" /v SteamPath 2^>nul`) DO (
-    SET "STEAM_DIR=%%B"
-)
-
-IF NOT DEFINED STEAM_DIR (
-    echo Steam directory not found in registry!
-    pause
-    exit /b
-)
-SET "STEAM_DIR=%STEAM_DIR:/=\%"
+SET "STEAM_DIR="
 
 SET "PATHSEP=\"
 
@@ -73,3 +63,4 @@ FOR %%F IN (%FOLDERS%) DO (
 )
 
 echo All done. Folders restored.
+
