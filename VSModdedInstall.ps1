@@ -12,12 +12,90 @@ $Depots = @(
 
 $ErrorActionPreference = "Stop"
 
+function Parse-VDF {
+    param ([string]$Text)
+
+    $stack = @(@{})
+    $key = $null
+
+    foreach ($line in $Text -split "`n") {
+        $line = $line.Trim()
+
+        if ($line -eq '{') {
+            $new = @{}
+            $stack[-1][$key] = $new
+            $stack += $new
+            continue
+        }
+
+        if ($line -eq '}') {
+            $stack = $stack[0..($stack.Count - 2)]
+            continue
+        }
+
+        if ($line -match '^"(.+?)"\s+"(.*?)"$') {
+            $stack[-1][$Matches[1]] = $Matches[2]
+            continue
+        }
+
+        if ($line -match '^"(.+?)"$') {
+            $key = $Matches[1]
+            continue
+        }
+    }
+
+    return $stack[0]
+}
+
+function Test-DotNetRuntime {
+    param (
+        [string]$VersionPrefix
+    )
+
+    try {
+        $installed = & dotnet --list-runtimes 2>$null
+        return $installed -match "^Microsoft\.NETCore\.App\s+$VersionPrefix"
+    }
+    catch {
+        return $false
+    }
+}
+
 # ===================== PATHS =====================
 $WorkDir   = Join-Path $env:TEMP "VSModSetup"
 $ToolDir   = Join-Path $WorkDir "Tools"
 $DepotDir  = Join-Path $WorkDir "Depot"
+$dotnet6Url = "https://dotnet.microsoft.com/download/dotnet/thank-you/runtime-6.0.28-windows-x64-installer"
+$dotnet10Url = "https://dotnet.microsoft.com/download/dotnet/thank-you/runtime-10.0.1-windows-x64-installer"
+$dotnetInstallPath = "$env:TEMP\DotNetInstallers"
 
-New-Item -ItemType Directory -Force -Path $WorkDir,$ToolDir,$DepotDir | Out-Null
+New-Item -ItemType Directory -Force -Path $WorkDir,$ToolDir,$DepotDir,$dotnetInstallPath | Out-Null
+
+if (-not (Test-DotNetRuntime -VersionPrefix "6.")) {
+    Write-Host ".NET 6 runtime not found. Installing..."
+    $dotnet6Installer = Join-Path $dotnetInstallPath "dotnet6.exe"
+    Invoke-WebRequest -Uri $dotnet6Url -OutFile $dotnet6Installer
+    Start-Process -FilePath $dotnet6Installer -ArgumentList "/install","/quiet","/norestart" -Wait
+    Write-Host ".NET 6 installation completed."
+}
+else {
+    Write-Host ".NET 6 runtime detected."
+}
+
+# --- Check .NET 10 ---
+if (-not (Test-DotNetRuntime -VersionPrefix "10.")) {
+    Write-Host ".NET 10 runtime not found. Installing..."
+    $dotnet10Installer = Join-Path $dotnetInstallPath "dotnet10.exe"
+    Invoke-WebRequest -Uri $dotnet10Url -OutFile $dotnet10Installer
+    Start-Process -FilePath $dotnet10Installer -ArgumentList "/install","/quiet","/norestart" -Wait
+    Write-Host ".NET 10 installation completed."
+}
+else {
+    Write-Host ".NET 10 runtime detected."
+}
+
+Write-Host "All required .NET runtimes are installed."
+
 
 Write-Host "=== Detecting Steam path ==="
 
@@ -28,7 +106,22 @@ if (-not $SteamPath) {
     Write-Error "Steam installation not found."
 }
 
-$SteamCommon = Join-Path $SteamPath "steamapps\common"
+$VdfPath = Join-Path $SteamPath "config\libraryfolders.vdf"
+$TargetAppId = "1794680"
+$content = Get-Content $VdfPath -Raw
+$vdf = Parse-VDF $content
+$SteamLib = ""
+
+foreach ($lib in $vdf.libraryfolders.GetEnumerator()) {
+    if ($lib.Value.apps.ContainsKey($TargetAppId)) {
+        $path = $lib.Value.path -replace '\\\\','\'
+        Write-Host "FOUND:" $path
+		$SteamLib = $path
+        break
+    }
+}
+
+$SteamCommon = Join-Path $SteamLib "steamapps\common"
 $VSModded    = Join-Path $SteamCommon "VSModded"
 $VSBackup    = Join-Path $SteamCommon "VSDLCBackup"
 
@@ -128,6 +221,26 @@ $BatPath  = Join-Path $VSModded "MoveDLC.bat"
 
 Invoke-WebRequest $IconUrl -OutFile $IconPath
 Invoke-WebRequest $BatUrl -OutFile $BatPath
+
+$lines = Get-Content $BatPath
+
+$found = $false
+
+for ($i = 0; $i -lt $lines.Count; $i++) {
+    if (-not $found -and $lines[$i] -match '^SET\s+"STEAM_DIR=') {
+
+        # Replace only the first occurrence
+        $lines[$i] = 'SET "STEAM_DIR=' + $SteamLib + '"'
+        $found = $true
+    }
+}
+
+if (-not $found) {
+    throw 'SET "STEAM_DIR=" not found in MoveDLC.bat'
+}
+
+Set-Content -Path $BatPath -Value $lines -Encoding ASCII
+
 
 # ===================== CREATE DESKTOP SHORTCUTS =====================
 Write-Host "`n=== Creating desktop shortcuts ==="
