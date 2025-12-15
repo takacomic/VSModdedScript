@@ -13,12 +13,12 @@ IF NOT DEFINED STEAM_DIR (
 )
 
 REM --- Append steamapps\common ---
-SET "STEAM_DIR=%STEAM_DIR%/steamapps/common"
+SET "STEAM_DIR=%STEAM_DIR%\steamapps\common"
 
 REM --- Step 2: Define required directories ---
-SET "VSMODDED=%STEAM_DIR%/VSModded"
-SET "VSORIGINAL=%STEAM_DIR%/Vampire Survivors"
-SET "VSBACKUP=%STEAM_DIR%/VSDLCBackup"
+SET "VSMODDED=%STEAM_DIR%\VSModded"
+SET "VSORIGINAL=%STEAM_DIR%\Vampire Survivors"
+SET "VSBACKUP=%STEAM_DIR%\VSDLCBackup"
 
 REM --- Create directories if they don't exist ---
 FOR %%D IN ("%VSMODDED%" "%VSORIGINAL%" "%VSBACKUP%") DO (
@@ -35,7 +35,8 @@ REM --- Move folders from Vampire Survivors to backup ---
 echo Backing up original folders from Vampire Survivors...
 FOR %%F IN (%FOLDERS%) DO (
     IF EXIST "%VSORIGINAL%\%%F" (
-        move /Y "%VSORIGINAL%\%%F" "%VSBACKUP%\%%F"
+        robocopy "%VSORIGINAL%\%%F" "%VSBACKUP%\%%F" /MOVE /E
+        rmdir /S /Q "%VSORIGINAL%\%%F"
     )
 )
 
@@ -43,7 +44,8 @@ REM --- Move folders from VSModded to Vampire Survivors ---
 echo Swapping in modded folders...
 FOR %%F IN (%FOLDERS%) DO (
     IF EXIST "%VSMODDED%\%%F" (
-        move /Y "%VSMODDED%\%%F" "%VSORIGINAL%\%%F"
+        robocopy "%VSMODDED%\%%F" "%VSORIGINAL%\%%F" /MOVE /E
+        rmdir /S /Q "%VSMODDED%\%%F"
     )
 )
 
@@ -57,16 +59,17 @@ echo Reverting folders to original state...
 REM Move folders from Vampire Survivors back to VSModded
 FOR %%F IN (%FOLDERS%) DO (
     IF EXIST "%VSORIGINAL%\%%F" (
-        move /Y "%VSORIGINAL%\%%F" "%VSMODDED%\%%F"
+        robocopy "%VSORIGINAL%\%%F" "%VSMODDED%\%%F" /MOVE /E
+        rmdir /S /Q "%VSORIGINAL%\%%F"
     )
 )
 
 REM Move folders from backup back to Vampire Survivors
 FOR %%F IN (%FOLDERS%) DO (
     IF EXIST "%VSBACKUP%\%%F" (
-        move /Y "%VSBACKUP%\%%F" "%VSORIGINAL%\%%F"
+        robocopy "%VSBACKUP%\%%F" "%VSORIGINAL%\%%F" /MOVE /E
+        rmdir /S /Q "%VSBACKUP%\%%F"
     )
 )
 
 echo All done. Folders restored.
-pause
