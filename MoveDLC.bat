@@ -11,17 +11,9 @@ IF NOT DEFINED STEAM_DIR (
     pause
     exit /b
 )
+SET "STEAM_DIR=%STEAM_DIR:/=\%"
 
-REM --- Detect Windows version (10 vs 11) ---
-FOR /F "tokens=3" %%A IN ('reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion" /v CurrentBuild ^| find "CurrentBuild"') DO (
-    SET "WIN_BUILD=%%A"
-)
-
-IF %WIN_BUILD% GEQ 22000 (
-    SET "PATHSEP=\"
-) ELSE (
-    SET "PATHSEP=/"
-)
+SET "PATHSEP=\"
 
 SET "STEAM_DIR=%STEAM_DIR%%PATHSEP%steamapps%PATHSEP%common"
 
