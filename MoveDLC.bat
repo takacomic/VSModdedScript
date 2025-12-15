@@ -12,13 +12,22 @@ IF NOT DEFINED STEAM_DIR (
     exit /b
 )
 
-REM --- Append steamapps\common ---
-SET "STEAM_DIR=%STEAM_DIR%\steamapps\common"
+REM --- Detect Windows version (10 vs 11) ---
+FOR /F "tokens=3" %%A IN ('reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion" /v CurrentBuild ^| find "CurrentBuild"') DO (
+    SET "WIN_BUILD=%%A"
+)
 
-REM --- Step 2: Define required directories ---
-SET "VSMODDED=%STEAM_DIR%\VSModded"
-SET "VSORIGINAL=%STEAM_DIR%\Vampire Survivors"
-SET "VSBACKUP=%STEAM_DIR%\VSDLCBackup"
+IF %WIN_BUILD% GEQ 22000 (
+    SET "PATHSEP=\"
+) ELSE (
+    SET "PATHSEP=/"
+)
+
+SET "STEAM_DIR=%STEAM_DIR%%PATHSEP%steamapps%PATHSEP%common"
+
+SET "VSMODDED=%STEAM_DIR%%PATHSEP%VSModded"
+SET "VSORIGINAL=%STEAM_DIR%%PATHSEP%Vampire Survivors"
+SET "VSBACKUP=%STEAM_DIR%%PATHSEP%VSDLCBackup"
 
 REM --- Create directories if they don't exist ---
 FOR %%D IN ("%VSMODDED%" "%VSORIGINAL%" "%VSBACKUP%") DO (
@@ -28,7 +37,6 @@ FOR %%D IN ("%VSMODDED%" "%VSORIGINAL%" "%VSBACKUP%") DO (
     )
 )
 
-REM --- Step 3: Define the 6 folders to swap ---
 SET "FOLDERS=2230760 2313550 2690330 2887680 3210350 3451100"
 
 REM --- Move folders from Vampire Survivors to backup ---
@@ -49,11 +57,11 @@ FOR %%F IN (%FOLDERS%) DO (
     )
 )
 
-REM --- Step 4: Launch Vampire Survivors from VSModded and wait ---
+REM --- Launch Vampire Survivors from VSModded and wait ---
 echo Launching Vampire Survivors...
 START /WAIT "" "%VSMODDED%\VampireSurvivors.exe"
 
-REM --- Step 5: Reverse the folder moves ---
+REM --- Reverse the folder moves ---
 echo Reverting folders to original state...
 
 REM Move folders from Vampire Survivors back to VSModded
